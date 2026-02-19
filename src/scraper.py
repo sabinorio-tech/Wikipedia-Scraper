@@ -2,6 +2,8 @@ import json
 import re 
 import requests
 from bs4 import BeautifulSoup
+import csv
+
 
 class WikipediaScraper: 
     def __init__(self): 
@@ -82,9 +84,24 @@ class WikipediaScraper:
         
         return first_paragraph
     
-    def to_json_file(self, filepath: str): 
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(self.leaders_data, f, indent=4, ensure_ascii=False)
+    def save(self, filepath: str, filetype="json"):
+        if filetype == "json": 
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(self.leaders_data, f, indent=4, ensure_ascii=False)
+        
+        elif filetype == "csv": 
+            with open(filepath, "w", newline="", encoding="utf-8") as f: 
+                writer = csv.writer(f)
+                writer.writerow(["country", "first_name", "last_name", "first_paragraph"])
+
+                for country, leaders in self.leaders_data.items(): 
+                    for leader in leaders: 
+                        writer.writerow([
+                            country, 
+                            leader.get("first_name"),
+                            leader.get("last_name"), 
+                            leader.get("first_paragraph")
+                        ])
 
 if __name__ == "__main__":
     scraper = WikipediaScraper()
