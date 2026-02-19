@@ -4,6 +4,42 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 
+import time
+from concurrent.futures import ProcessPoolExecutor
+import os
+
+def fetch_first_paragraph_mp(wikipedia_url: str) -> tuple[str, str]:
+
+    for attempt in range(3):
+        try:
+            r = requests.get(wikipedia_url, timeout=15, headers={"User-Agent": "SeanBot/1.0 (learning scraping)"})
+            r.raise_for_status()
+            soup = BeautifulSoup(r.text, "html.parser")
+
+            first_paragraph = ""
+            for p in soup.find_all("p"):
+                text = p.get_text(" ", strip=True)
+                if text and p.find("b"):
+                    first_paragraph = text
+                    break
+
+            for pat, rep in [
+                (r"\[[^\]]*?\]", ""), (r"\([^)]*?\)", ""), (r"/[^/]{2,}/", ""),
+                (r"(?i)\b(écouter|listen)\b", ""), (r"\u00a0", " "),
+                (r"\s+([,;:.!?])", r"\1"), (r"\s+", " ")
+            ]:
+                first_paragraph = re.sub(pat, rep, first_paragraph).strip()
+
+            return wikipedia_url, first_paragraph
+
+        except requests.exceptions.RequestException:
+            if attempt == 2:
+                return wikipedia_url, ""
+            time.sleep(1)
+
+    return wikipedia_url, ""
+
+
 
 class WikipediaScraper: 
     def __init__(self): 
@@ -57,10 +93,16 @@ class WikipediaScraper:
             )
             leaders = r.json()
         
+        urls = [l.get("wikipedia_url") for l in leaders if l.get("wikipedia_url")]
+
+        max_workers = min(4, os.cpu_count() or 1)
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            results = dict(executor.map(fetch_first_paragraph_mp, urls))
+
         for leader in leaders: 
             url = leader.get("wikipedia_url")
             if url: 
-                leader["first_paragraph"] = self.get_first_paragraph(url)
+                leader["first_paragraph"] = results.get(url, "")
             
         self.leaders_data[country] = leaders
         
@@ -107,6 +149,5 @@ if __name__ == "__main__":
     scraper = WikipediaScraper()
     for country in scraper.get_countries():
         scraper.get_leaders(country)
-    scraper.to_json_file("../leaders.json")
-
+    scraper.save("../leaders.json", filetype="json")
     print("Scraping completed and saved to leaders.json")
