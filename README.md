@@ -10,8 +10,6 @@ The scenario involves building a scraper that retrieves information about politi
 
 Each time the script runs, it collects fresh data about leaders from multiple countries, their biographical information, and stores everything in a structured JSON format, demonstrating API integration, web scraping techniques, and OOP principles.
 
-![wiki_scraper_img](https://i.ibb.co/m5GmYfFG/Chat-GPT-Image-Feb-20-2026-10-06-03-AM.png)
-
 ## 💡 OOP Concepts Used
 
 This project demonstrates several key OOP principles:
